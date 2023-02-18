@@ -4,8 +4,9 @@ on:
   release:
     types: [ created ]
 
-permissions:
-  contents: write
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   meta:
@@ -23,10 +24,14 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - meta
+    permissions:
+      contents: write
+
     strategy:
       matrix:
         goos: [ windows, linux ]
         goarch: [ "386", amd64 ]
+
     steps:
       - uses: actions/checkout@v3
       - uses: wangyoucao577/go-release-action@v1.35
@@ -38,3 +43,40 @@ jobs:
           project_path: cmd/unlockproxy
           ldflags: "-X 'main.buildTime=${{ needs.meta.outputs.date }}' -X 'main.buildCommit=${{ github.sha }}' -X 'main.buildVersion=${{ github.ref_name }}'"
           sha256sum: true
+
+  release-image:
+    runs-on: ubuntu-latest
+    needs:
+      - meta
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          build-args: |
+            build_commit_sha=${{ github.sha }},
+            build_version=${{ github.ref_name }},
+            build_time=${{ needs.meta.outputs.date }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
