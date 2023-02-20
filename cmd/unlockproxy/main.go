@@ -64,7 +64,7 @@ func main() {
 		},
 	}))
 
-	e.GET("/ASP/getunlocksinfo.aspx", func(c echo.Context) error {
+	e.GET(fmt.Sprintf("/ASP/%s", cfg.UnlocksEndpoint), func(c echo.Context) error {
 		pid := c.QueryParam("pid")
 		if _, err := strconv.Atoi(pid); err != nil {
 			msg := strings.Join([]string{"E\t216", "$\t4\t$"}, "\n")

@@ -10,6 +10,8 @@ type Config struct {
 	ListenAddr   string
 	Debug        bool
 	ColorizeLogs bool
+
+	UnlocksEndpoint string
 }
 
 func Init() *Config {
@@ -19,6 +21,7 @@ func Init() *Config {
 	flag.BoolVar(&cfg.Debug, "debug", false, "enable debug logging")
 	flag.BoolVar(&cfg.ColorizeLogs, "colorize-logs", false, "colorize log messages")
 	flag.StringVar(&cfg.ListenAddr, "address", ":8080", "server/bind address in format [host]:port")
+	flag.StringVar(&cfg.UnlocksEndpoint, "unlocks-endpoint", "getunlocksinfo.aspx", "path to use for fake getunlocksinfo endpoint, without leading \"/ASP/\"")
 	flag.Parse()
 	return cfg
 }
