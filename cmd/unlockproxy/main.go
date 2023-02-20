@@ -97,7 +97,7 @@ func main() {
 		return c.String(http.StatusOK, unlocks)
 	})
 
-	originURL, err := url.Parse("http://official.ranking.bf2hub.com/")
+	originURL, err := url.Parse(cfg.OriginBaseURL)
 	if err != nil {
 		e.Logger.Fatal(err)
 	}
