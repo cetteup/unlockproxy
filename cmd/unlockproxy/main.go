@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/cetteup/unlockproxy/cmd/unlockproxy/options"
+	"github.com/cetteup/unlockproxy/cmd/unlockproxy/internal/options"
 )
 
 var (
@@ -68,7 +68,7 @@ func main() {
 
 	e.GET(fmt.Sprintf("/ASP/%s", opts.UnlocksEndpoint), func(c echo.Context) error {
 		pid := c.QueryParam("pid")
-		if _, err := strconv.Atoi(pid); err != nil {
+		if _, err2 := strconv.Atoi(pid); err2 != nil {
 			msg := strings.Join([]string{"E\t216", "$\t4\t$"}, "\n")
 			return c.String(http.StatusOK, msg)
 		}

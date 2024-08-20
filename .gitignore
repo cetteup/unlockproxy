@@ -14,5 +14,9 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+# Config files
+config.yaml
+
 # Built binaries
 cmd/unlockproxy/unlockproxy
+cmd/importer/importer
