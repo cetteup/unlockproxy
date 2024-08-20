@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +17,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/cetteup/unlockproxy/cmd/unlockproxy/config"
+	"github.com/cetteup/unlockproxy/cmd/unlockproxy/internal"
 	"github.com/cetteup/unlockproxy/cmd/unlockproxy/options"
+	"github.com/cetteup/unlockproxy/internal/database"
+	"github.com/cetteup/unlockproxy/internal/domain/player/sql"
 )
 
 var (
@@ -44,6 +51,38 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
+	cfg, err := config.LoadConfig(opts.ConfigPath)
+	if err != nil {
+		log.Fatal().
+			Err(err).
+			Str("config", opts.ConfigPath).
+			Msg("Failed to read config file")
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	db := database.Connect(
+		cfg.Database.Hostname,
+		cfg.Database.DatabaseName,
+		cfg.Database.Username,
+		cfg.Database.Password,
+	)
+	defer func() {
+		err2 := db.Close()
+		if err2 != nil {
+			log.Error().
+				Err(err2).
+				Msg("Failed to close database connection")
+		}
+	}()
+
+	playerRepository := sql.NewRepository(db)
+
+	w := internal.NewWorker(playerRepository)
+	todo := make(chan internal.VerifyPlayerParams, 10)
+	go w.Run(ctx, todo)
+
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
@@ -66,9 +105,24 @@ func main() {
 		},
 	}))
 
+	e.GET("/ASP/VerifyPlayer.aspx", func(c echo.Context) error {
+		var params internal.VerifyPlayerParams
+		if err2 := c.Bind(&params); err2 != nil {
+			msg := strings.Join([]string{"E\t216", "$\t4\t$"}, "\n")
+			return c.String(http.StatusOK, msg)
+		}
+		if params.PID >= 10000000 && params.PID < 20000000 {
+			todo <- params
+		}
+
+		// Mimic BF2Hub response (which does not support player verification)
+		msg := strings.Join([]string{"E\t999", "$\t4\t$"}, "\n")
+		return c.String(http.StatusOK, msg)
+	})
+
 	e.GET(fmt.Sprintf("/ASP/%s", opts.UnlocksEndpoint), func(c echo.Context) error {
 		pid := c.QueryParam("pid")
-		if _, err := strconv.Atoi(pid); err != nil {
+		if _, err2 := strconv.Atoi(pid); err2 != nil {
 			msg := strings.Join([]string{"E\t216", "$\t4\t$"}, "\n")
 			return c.String(http.StatusOK, msg)
 		}
@@ -111,5 +165,18 @@ func main() {
 		},
 	})))
 
-	e.Logger.Fatal(e.Start(opts.ListenAddr))
+	go func() {
+		if err2 := e.Start(opts.ListenAddr); !errors.Is(err2, http.ErrServerClosed) {
+			e.Logger.Fatal(err2)
+		}
+	}()
+
+	<-ctx.Done()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err = e.Shutdown(ctx); err != nil {
+		e.Logger.Fatal(err)
+	}
+	close(todo)
 }
