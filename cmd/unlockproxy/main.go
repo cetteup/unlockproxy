@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/cetteup/unlockproxy/cmd/unlockproxy/config"
+	"github.com/cetteup/unlockproxy/cmd/unlockproxy/options"
 )
 
 var (
@@ -25,20 +25,20 @@ var (
 
 func main() {
 	version := fmt.Sprintf("unlockproxy %s (%s) built at %s", buildVersion, buildCommit, buildTime)
-	cfg := config.Init()
+	opts := options.Init()
 
 	// Print version and exit
-	if cfg.Version {
+	if opts.Version {
 		fmt.Println(version)
 		os.Exit(0)
 	}
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{
 		Out:        os.Stdout,
-		NoColor:    !cfg.ColorizeLogs,
+		NoColor:    !opts.ColorizeLogs,
 		TimeFormat: time.RFC3339,
 	})
-	if cfg.Debug {
+	if opts.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -66,7 +66,7 @@ func main() {
 		},
 	}))
 
-	e.GET(fmt.Sprintf("/ASP/%s", cfg.UnlocksEndpoint), func(c echo.Context) error {
+	e.GET(fmt.Sprintf("/ASP/%s", opts.UnlocksEndpoint), func(c echo.Context) error {
 		pid := c.QueryParam("pid")
 		if _, err := strconv.Atoi(pid); err != nil {
 			msg := strings.Join([]string{"E\t216", "$\t4\t$"}, "\n")
@@ -99,7 +99,7 @@ func main() {
 		return c.String(http.StatusOK, unlocks)
 	})
 
-	originURL, err := url.Parse(cfg.OriginBaseURL)
+	originURL, err := url.Parse(opts.OriginBaseURL)
 	if err != nil {
 		e.Logger.Fatal(err)
 	}
@@ -111,5 +111,5 @@ func main() {
 		},
 	})))
 
-	e.Logger.Fatal(e.Start(cfg.ListenAddr))
+	e.Logger.Fatal(e.Start(opts.ListenAddr))
 }
