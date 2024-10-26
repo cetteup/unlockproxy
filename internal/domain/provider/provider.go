@@ -17,7 +17,7 @@ const (
 	providerNameOpenSpy = "openspy"
 	providerNameB2BF2   = "b2bf2"
 
-	baseURLBF2Hub  = "http://official.ranking.bf2hub.com/"
+	baseURLBF2Hub  = "http://bf2web.bf2hub.com/"
 	baseURLPlayBF2 = "http://bf2web.playbf2.ru/"
 	baseURLOpenSpy = "http://bf2web.openspy.net/"
 	baseURLB2BF2   = "http://master.servers.b2bf2.net:8888/"

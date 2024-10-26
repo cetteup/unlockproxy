@@ -146,8 +146,6 @@ func (h *Handler) forwardRequest(ctx context.Context, pv provider.Provider, inco
 		return nil, err
 	}
 
-	// Host differs from URL
-	req.Host = incoming.Host
 	req.Header = incoming.Header.Clone()
 
 	res, err := h.client.Do(req)
