@@ -2,6 +2,8 @@ package options
 
 import (
 	"flag"
+
+	"github.com/cetteup/unlockproxy/internal/domain/provider"
 )
 
 type Options struct {
@@ -11,8 +13,9 @@ type Options struct {
 	Debug        bool
 	ColorizeLogs bool
 
-	OriginBaseURL   string
-	UnlocksEndpoint string
+	ConfigPath string
+
+	Provider provider.Provider
 }
 
 func Init() *Options {
@@ -22,8 +25,8 @@ func Init() *Options {
 	flag.BoolVar(&opts.Debug, "debug", false, "enable debug logging")
 	flag.BoolVar(&opts.ColorizeLogs, "colorize-logs", false, "colorize log messages")
 	flag.StringVar(&opts.ListenAddr, "address", ":8080", "server/bind address in format [host]:port")
-	flag.StringVar(&opts.OriginBaseURL, "origin", "http://official.ranking.bf2hub.com", "origin to use for all other aspx endpoints, base URL without \"/ASP/\"")
-	flag.StringVar(&opts.UnlocksEndpoint, "unlocks-endpoint", "getunlocksinfo.aspx", "path to use for fake getunlocksinfo endpoint, without leading \"/ASP/\"")
+	flag.StringVar(&opts.ConfigPath, "config", "config.yaml", "path to YAML config file")
+	flag.TextVar(&opts.Provider, "provider", provider.ProviderB2BF2, "primary provider to use as fallback/for directly proxied endpoints (bf2hub|playbf2|openspy|b2bf2)")
 	flag.Parse()
 	return opts
 }

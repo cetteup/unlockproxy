@@ -91,6 +91,57 @@ func (r *Repository) InsertMany(ctx context.Context, players []player.Player) er
 	return nil
 }
 
+func (r *Repository) FindByPID(ctx context.Context, pid int) (player.Player, error) {
+	query := sq.
+		Select(
+			columnPID,
+			columnNick,
+			columnProvider,
+			columnImported,
+		).
+		From(playerTable).
+		Where(sq.And{
+			sq.Eq{columnPID: pid},
+		}).
+		OrderBy(
+			fmt.Sprintf("%s ASC", columnProvider),
+		)
+
+	rows, err := query.RunWith(r.db).QueryContext(ctx)
+	if err != nil {
+		return player.Player{}, err
+	}
+
+	// Load all results, as we need to ensure we only find exactly one player
+	players := make([]player.Player, 0)
+	for rows.Next() {
+		var p player.Player
+		if err = rows.Scan(
+			&p.PID,
+			&p.Nick,
+			&p.Provider,
+			&p.Imported,
+		); err != nil {
+			return player.Player{}, err
+		}
+
+		players = append(players, p)
+	}
+
+	if err = rows.Err(); err != nil {
+		return player.Player{}, err
+	}
+
+	if len(players) == 0 {
+		return player.Player{}, player.ErrPlayerNotFound
+	}
+	if len(players) > 1 {
+		return player.Player{}, player.ErrMultiplePlayersFound
+	}
+
+	return players[0], nil
+}
+
 func (r *Repository) FindByProviderBetweenPIDs(ctx context.Context, pv provider.Provider, lower, upper int) ([]player.Player, error) {
 	query := sq.
 		Select(

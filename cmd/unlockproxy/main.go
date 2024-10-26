@@ -2,11 +2,8 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -14,7 +11,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/cetteup/unlockproxy/cmd/unlockproxy/internal/config"
+	"github.com/cetteup/unlockproxy/cmd/unlockproxy/internal/handler"
 	"github.com/cetteup/unlockproxy/cmd/unlockproxy/internal/options"
+	"github.com/cetteup/unlockproxy/internal/database"
+	"github.com/cetteup/unlockproxy/internal/domain/player/sql"
 )
 
 var (
@@ -44,18 +45,52 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
+	cfg, err := config.LoadConfig(opts.ConfigPath)
+	if err != nil {
+		log.Fatal().
+			Err(err).
+			Str("config", opts.ConfigPath).
+			Msg("Failed to read config file")
+	}
+
+	db := database.Connect(
+		cfg.Database.Hostname,
+		cfg.Database.DatabaseName,
+		cfg.Database.Username,
+		cfg.Database.Password,
+	)
+	defer func() {
+		err2 := db.Close()
+		if err2 != nil {
+			log.Error().
+				Err(err2).
+				Msg("Failed to close database connection")
+		}
+	}()
+
+	repository := sql.NewRepository(db)
+	h := handler.NewHandler(repository, opts.Provider)
+
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
+	e.Use(middleware.Recover())
+	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+		Timeout: time.Second * 10,
+	}))
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogError:     true,
 		LogRemoteIP:  true,
+		LogMethod:    true,
 		LogURI:       true,
 		LogStatus:    true,
 		LogLatency:   true,
 		LogUserAgent: true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			log.Info().
+				Err(v.Error).
 				Str("remote", v.RemoteIP).
+				Str("method", v.Method).
 				Str("URI", v.URI).
 				Int("status", v.Status).
 				Str("latency", v.Latency.Truncate(time.Millisecond).String()).
@@ -66,40 +101,15 @@ func main() {
 		},
 	}))
 
-	e.GET(fmt.Sprintf("/ASP/%s", opts.UnlocksEndpoint), func(c echo.Context) error {
-		pid := c.QueryParam("pid")
-		if _, err2 := strconv.Atoi(pid); err2 != nil {
-			msg := strings.Join([]string{"E\t216", "$\t4\t$"}, "\n")
-			return c.String(http.StatusOK, msg)
-		}
+	// Requests handled locally
+	e.GET("/ASP/getunlocksinfo.aspx", h.HandleGetUnlocksInfo)
 
-		unlocks := strings.Join([]string{
-			"O",
-			"H\tpid\tnick\tasof",
-			fmt.Sprintf("D\t%s\tunlockproxy\t%d", pid, time.Now().Unix()),
-			"H\tenlisted\tofficer",
-			"D\t0\t0",
-			"H\tid\tstate",
-			"D\t11\ts",
-			"D\t22\ts",
-			"D\t33\ts",
-			"D\t44\ts",
-			"D\t55\ts",
-			"D\t66\ts",
-			"D\t77\ts",
-			"D\t88\ts",
-			"D\t99\ts",
-			"D\t111\ts",
-			"D\t222\ts",
-			"D\t333\ts",
-			"D\t444\ts",
-			"D\t555\ts",
-			"$\t132\t$",
-		}, "\n")
-		return c.String(http.StatusOK, unlocks)
-	})
+	// Requests forwarded based on player provider
+	e.GET("/ASP/getplayerinfo.aspx", h.HandleGetForward)
+	e.GET("/ASP/getawardsinfo.aspx", h.HandleGetForward)
+	e.GET("/ASP/getrankinfo.aspx", h.HandleGetForward)
 
-	originURL, err := url.Parse(opts.OriginBaseURL)
+	originURL, err := url.Parse(opts.Provider.BaseURL())
 	if err != nil {
 		e.Logger.Fatal(err)
 	}

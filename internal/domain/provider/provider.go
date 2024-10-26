@@ -16,6 +16,11 @@ const (
 	providerNamePlayBF2 = "playbf2"
 	providerNameOpenSpy = "openspy"
 	providerNameB2BF2   = "b2bf2"
+
+	baseURLBF2Hub  = "http://official.ranking.bf2hub.com/"
+	baseURLPlayBF2 = "http://bf2web.playbf2.ru/"
+	baseURLOpenSpy = "http://bf2web.openspy.net/"
+	baseURLB2BF2   = "http://master.servers.b2bf2.net:8888/"
 )
 
 //goland:noinspection GoMixedReceiverTypes
@@ -31,6 +36,22 @@ func (p Provider) String() string {
 		return providerNameB2BF2
 	default:
 		return "unknown"
+	}
+}
+
+//goland:noinspection GoMixedReceiverTypes
+func (p Provider) BaseURL() string {
+	switch p {
+	case ProviderBF2Hub:
+		return baseURLBF2Hub
+	case ProviderPlayBF2:
+		return baseURLPlayBF2
+	case ProviderOpenSpy:
+		return baseURLOpenSpy
+	case ProviderB2BF2:
+		return baseURLB2BF2
+	default:
+		return "http://unknown"
 	}
 }
 
