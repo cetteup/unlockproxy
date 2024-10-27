@@ -146,7 +146,8 @@ func (h *Handler) forwardRequest(ctx context.Context, pv provider.Provider, inco
 		return nil, err
 	}
 
-	req.Header = incoming.Header.Clone()
+	// Copy downstream user agent to ensure compatibility
+	req.Header.Set("User-Agent", incoming.Header.Get("User-Agent"))
 
 	res, err := h.client.Do(req)
 	if err != nil {
