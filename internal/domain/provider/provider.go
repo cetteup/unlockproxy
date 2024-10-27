@@ -20,7 +20,7 @@ const (
 	baseURLBF2Hub  = "http://bf2web.bf2hub.com/"
 	baseURLPlayBF2 = "http://bf2web.playbf2.ru/"
 	baseURLOpenSpy = "http://bf2web.openspy.net/"
-	baseURLB2BF2   = "http://master.servers.b2bf2.net:8888/"
+	baseURLB2BF2   = "https://stats.b2bf2.net/"
 )
 
 //goland:noinspection GoMixedReceiverTypes
