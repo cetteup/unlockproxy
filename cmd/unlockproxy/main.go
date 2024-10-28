@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"time"
 
@@ -105,21 +104,12 @@ func main() {
 	e.GET("/ASP/getunlocksinfo.aspx", h.HandleGetUnlocksInfo)
 
 	// Requests forwarded based on player provider
-	e.GET("/ASP/getplayerinfo.aspx", h.HandleGetForward)
-	e.GET("/ASP/getawardsinfo.aspx", h.HandleGetForward)
-	e.GET("/ASP/getrankinfo.aspx", h.HandleGetForward)
+	e.GET("/ASP/getplayerinfo.aspx", h.HandleDynamicForward)
+	e.GET("/ASP/getawardsinfo.aspx", h.HandleDynamicForward)
+	e.GET("/ASP/getrankinfo.aspx", h.HandleDynamicForward)
 
-	originURL, err := url.Parse(opts.Provider.BaseURL())
-	if err != nil {
-		e.Logger.Fatal(err)
-	}
-
-	g := e.Group("/ASP/*")
-	g.Use(middleware.Proxy(middleware.NewRoundRobinBalancer([]*middleware.ProxyTarget{
-		{
-			URL: originURL,
-		},
-	})))
+	// Fallback forward to default provider
+	e.Any("/ASP/*.aspx", h.HandleStaticForward)
 
 	e.Logger.Fatal(e.Start(opts.ListenAddr))
 }

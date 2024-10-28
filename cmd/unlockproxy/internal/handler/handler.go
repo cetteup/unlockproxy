@@ -81,7 +81,7 @@ func (h *Handler) HandleGetUnlocksInfo(c echo.Context) error {
 	return c.String(http.StatusOK, unlocks.Serialize())
 }
 
-func (h *Handler) HandleGetForward(c echo.Context) error {
+func (h *Handler) HandleDynamicForward(c echo.Context) error {
 	p := params{}
 	if err2 := c.Bind(&p); err2 != nil {
 		return c.String(http.StatusOK, asp.NewSyntaxErrorResponse().Serialize())
@@ -97,7 +97,23 @@ func (h *Handler) HandleGetForward(c echo.Context) error {
 		Str("URI", c.Request().RequestURI).
 		Msg("Forwarding request")
 
-	res, err2 := h.forwardRequest(c.Request().Context(), pv, c.Request())
+	res, err2 := h.forwardRequest(c.Request().Context(), pv, c.Request(), c.RealIP())
+	if err2 != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError).SetInternal(err2)
+	}
+
+	// Copy all upstream header to ensure response can be handled correctly downstream
+	for key, values := range res.Header {
+		for _, value := range values {
+			c.Response().Header().Add(key, value)
+		}
+	}
+
+	return c.String(res.StatusCode, string(res.Body))
+}
+
+func (h *Handler) HandleStaticForward(c echo.Context) error {
+	res, err2 := h.forwardRequest(c.Request().Context(), h.provider, c.Request(), c.RealIP())
 	if err2 != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError).SetInternal(err2)
 	}
@@ -133,7 +149,7 @@ func (h *Handler) determineProvider(ctx context.Context, pid int) (provider.Prov
 	return p.Provider, nil
 }
 
-func (h *Handler) forwardRequest(ctx context.Context, pv provider.Provider, incoming *http.Request) (*UpstreamResponse, error) {
+func (h *Handler) forwardRequest(ctx context.Context, pv provider.Provider, incoming *http.Request, realIP string) (*UpstreamResponse, error) {
 	u, err := url.Parse(pv.BaseURL())
 	if err != nil {
 		return nil, err
@@ -161,6 +177,9 @@ func (h *Handler) forwardRequest(ctx context.Context, pv provider.Provider, inco
 
 	// Copy downstream user agent to ensure compatibility
 	req.Header.Set("User-Agent", incoming.Header.Get("User-Agent"))
+	req.Header.Set("X-Forwarded-Proto", incoming.Proto)
+	req.Header.Set("X-Forwarded-For", realIP)
+	req.Header.Set("X-Real-IP", realIP)
 
 	res, err := h.client.Do(req)
 	if err != nil {
