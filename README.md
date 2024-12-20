@@ -79,4 +79,8 @@ $	130	$
 
 Usually, this response will of course be different for each player. That's where unlockproxy comes in. It always returns the full list of weapons as unlocked when `getunlocksinfo.aspx` is called. Thus any player joining a server using unlockproxy will be able to use all unlocks. Any other ASPX HTTP calls made by the server (e.g. `VerifyPlayer.aspx`) are simply forwarded to a "real" Battlefield 2 stats backend (e.g. BF2Hub).
 
-![image](https://github.com/user-attachments/assets/85c6ef53-b8d5-40b2-b593-8cd3421133aa)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/283f942e-faa4-4143-a89f-2d12eed6be79">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/dce448cc-5660-469f-94d6-383b06206556">
+  <img src="https://github.com/user-attachments/assets/283f942e-faa4-4143-a89f-2d12eed6be79">
+</picture>
